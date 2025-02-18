@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: "*/1 * * * *"  # Runs every 1 minute
+    - cron: "*/14 * * * *"  # Runs every 14 minutes
   workflow_dispatch:  # ✅ Allows manual trigger via API
  
 jobs:
@@ -33,19 +33,15 @@ jobs:
  
       - name: Prevent Infinite Loop (Wait 14 min Before Retrying)
         run: |
-          echo "🔎 Fetching last GitHub Actions execution time..."
-          LAST_RUN_RAW=$(curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
+          LAST_RUN=$(date -d "$(curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
           https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/runs?per_page=1 | \
-          jq -r '.workflow_runs[0].created_at')
-
-          echo "🕒 Last execution time (RAW): $LAST_RUN_RAW"
-          LAST_RUN=$(date -d "$LAST_RUN_RAW" +%s)
-
+          jq -r '.workflow_runs[0].created_at')" +%s)
+ 
           NOW=$(date +%s)
           DIFF=$((NOW - LAST_RUN))
-          echo "⏳ Time since last run: $DIFF seconds (Threshold: 60 sec)"
-
-          if [ "$DIFF" -lt 60 ]; then
+          echo "⏳ Time since last run: $DIFF seconds"
+ 
+          if [ "$DIFF" -lt 840 ]; then
             echo "🛑 Stopping: Last Keep-Alive was less than 14 minutes ago!"
             exit 0
           fi
@@ -62,3 +58,33 @@ jobs:
           else
             echo "✅ Keep-Alive request succeeded!"
           fi
+ 
+ 
+  trigger_self:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log Current Time for Self-Trigger
+        run: echo "🕒 Self-Trigger Started at $(date)"
+ 
+      - name: Prevent Infinite Loop (Wait 14 min Before Retrying)
+        run: |
+          LAST_RUN=$(date -d "$(curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
+          https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/runs?per_page=1 | \
+          jq -r '.workflow_runs[0].created_at')" +%s)
+ 
+          NOW=$(date +%s)
+          DIFF=$((NOW - LAST_RUN))
+          echo "⏳ Time since last run: $DIFF seconds"
+ 
+          if [ "$DIFF" -lt 840 ]; then
+            echo "🛑 Stopping: Last trigger was less than 14 minutes ago!"
+            exit 0
+          fi
+ 
+      - name: Trigger GitHub Actions Manually via API
+        run: |
+          echo "🔄 Triggering GitHub Actions via API..."
+          curl -X POST -H "Accept: application/vnd.github.v3+json" \
+               -H "Authorization: token ${{ secrets.GH_PAT }}" \
+               https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/workflows/deploy.yml/dispatches \
+               -d '{"ref":"main"}'
