@@ -16,9 +16,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Log Current Time
-        run: echo "🕒 Deployment Triggered at $(date)"
-
       - name: Deploy to Render
         run: |
           echo "🚀 Triggering Deployment to Render..."
@@ -46,45 +43,15 @@ jobs:
             exit 0
           fi
 
-    - name: Keep Render API Awake
-      run: |
-        echo "🔄 Sending Keep-Alive Request..."
-        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://ghl-css-styling.onrender.com/keep-alive)
-        echo "📜 Keep-Alive Response Code: $RESPONSE"
-
-        if [ "$RESPONSE" -ne 200 ]; then
-          echo "❌ Keep-Alive request failed!"
-          exit 1
-        else
-          echo "✅ Keep-Alive request succeeded!"
-        fi
-
-
-  trigger_self:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log Current Time for Self-Trigger
-        run: echo "🕒 Self-Trigger Started at $(date)"
-
-      - name: Prevent Infinite Loop (Wait 14 min Before Retrying)
+      - name: Keep Render API Awake
         run: |
-          LAST_RUN=$(date -d "$(curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
-          https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/runs?per_page=1 | \
-          jq -r '.workflow_runs[0].created_at')" +%s)
+          echo "🔄 Sending Keep-Alive Request..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://ghl-css-styling.onrender.com/keep-alive)
+          echo "📜 Keep-Alive Response Code: $RESPONSE"
 
-          NOW=$(date +%s)
-          DIFF=$((NOW - LAST_RUN))
-          echo "⏳ Time since last run: $DIFF seconds"
-
-          if [ "$DIFF" -lt 840 ]; then
-            echo "🛑 Stopping: Last trigger was less than 14 minutes ago!"
-            exit 0
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "❌ Keep-Alive request failed!"
+            exit 1
+          else
+            echo "✅ Keep-Alive request succeeded!"
           fi
-
-      - name: Trigger GitHub Actions Manually via API
-        run: |
-          echo "🔄 Triggering GitHub Actions via API..."
-          curl -X POST -H "Accept: application/vnd.github.v3+json" \
-               -H "Authorization: token ${{ secrets.GH_PAT }}" \
-               https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/workflows/deploy.yml/dispatches \
-               -d '{"ref":"main"}'
