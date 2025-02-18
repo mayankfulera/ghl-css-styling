@@ -25,4 +25,4 @@ jobs:
     steps:
       - name: Keep Render API Awake
         run: |
-          curl -s -o /dev/null https://your-api.onrender.com/keep-alive
+          curl -s -o /dev/null https://ghl-css-styling.onrender.com/keep-alive

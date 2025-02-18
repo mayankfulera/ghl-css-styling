@@ -30,6 +30,11 @@ function xorEncryptDecrypt(data, key) {
 }
 
 const encryptionKey = "secureKey123";
+
+app.get("/keep-alive", (req, res) => {
+  res.status(200).send("👋 I'm awake!");
+});
+
 app.get("/load-css.js", (req, res) => {
   const key = req.query.key;
 
