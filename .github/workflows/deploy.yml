@@ -1,29 +1,24 @@
 name: Deploy to Render
- 
+
 on:
   push:
     branches:
       - main
-  schedule:
-    - cron: "*/14 * * * *"  # Runs every 14 minutes
   workflow_dispatch:  # ✅ Allows manual trigger via API
- 
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
- 
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
- 
-      - name: Log Current Time
-        run: echo "🕒 Deployment Triggered at $(date)"
- 
+
       - name: Deploy to Render
         run: |
           echo "🚀 Triggering Deployment to Render..."
           curl -X POST https://api.render.com/deploy/srv-cuqbkb0gph6c73d0ke50?key=rnd_AzBjsRHVKwSjyxvUVvXmprvK2UKD
- 
+
   keep_alive:
     runs-on: ubuntu-latest
 
@@ -34,32 +29,24 @@ jobs:
       - name: Prevent Infinite Loop (Wait 14 min Before Retrying)
         id: check_time
         run: |
-          echo "🔎 Fetching last GitHub Actions execution time..."
           LAST_RUN_RAW=$(curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
           https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/runs?per_page=1 | \
           jq -r '.workflow_runs[0].created_at')
 
-          echo "🕒 Last execution time (RAW): $LAST_RUN_RAW"
+          echo "🕒 Last execution time: $LAST_RUN_RAW"
           LAST_RUN=$(date -d "$LAST_RUN_RAW" +%s)
 
           NOW=$(date +%s)
           DIFF=$((NOW - LAST_RUN))
-          echo "⏳ Time since last run: $DIFF seconds (Threshold: 840 sec)"
+          echo "⏳ Time since last run: $DIFF seconds (Threshold: 60 sec)"
 
-          if [ "$DIFF" -lt 840 ]; then
+          if [ "$DIFF" -lt 60 ]; then
             echo "🛑 Stopping: Last Keep-Alive was less than 14 minutes ago!"
-            echo "::set-output name=skip::true"
-            exit 0  # This ensures the workflow does not fail but stops execution
-          else
-            echo "::set-output name=skip::false"
+            exit 0
           fi
 
-      - name: Skip Execution Log
-        if: steps.check_time.outputs.skip == 'true'
-        run: echo "🔕 Skipping keep-alive request because it was recently triggered."
-
       - name: Keep Render API Awake
-        if: steps.check_time.outputs.skip == 'false'
+        if: steps.check_time.outputs.skip != 'true'
         run: |
           echo "🔄 Sending Keep-Alive Request..."
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://ghl-css-styling.onrender.com/keep-alive)
@@ -72,34 +59,34 @@ jobs:
             echo "✅ Keep-Alive request succeeded!"
           fi
 
-
- 
- 
   trigger_self:
     runs-on: ubuntu-latest
     steps:
       - name: Log Current Time for Self-Trigger
         run: echo "🕒 Self-Trigger Started at $(date)"
- 
+
       - name: Prevent Infinite Loop (Wait 14 min Before Retrying)
         run: |
-          LAST_RUN=$(date -d "$(curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
+          LAST_RUN_RAW=$(curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
           https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/runs?per_page=1 | \
-          jq -r '.workflow_runs[0].created_at')" +%s)
- 
+          jq -r '.workflow_runs[0].created_at')
+
+          echo "🕒 Last execution time: $LAST_RUN_RAW"
+          LAST_RUN=$(date -d "$LAST_RUN_RAW" +%s)
+
           NOW=$(date +%s)
           DIFF=$((NOW - LAST_RUN))
-          echo "⏳ Time since last run: $DIFF seconds"
- 
-          if [ "$DIFF" -lt 840 ]; then
-            echo "🛑 Stopping: Last trigger was less than 14 minutes ago!"
+          echo "⏳ Time since last run: $DIFF seconds (Threshold: 60 sec)"
+
+          if [ "$DIFF" -lt 60 ]; then
+            echo "🛑 Stopping: Last Self-Trigger was less than 14 minutes ago!"
             exit 0
           fi
- 
+
       - name: Trigger GitHub Actions Manually via API
         run: |
           echo "🔄 Triggering GitHub Actions via API..."
           curl -X POST -H "Accept: application/vnd.github.v3+json" \
                -H "Authorization: token ${{ secrets.GH_PAT }}" \
-               https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/workflows/deploy.yml/dispatches \
+               https://api.github.com/repos/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY/actions/workflows/deploy.yml/dispatches \
                -d '{"ref":"main"}'
