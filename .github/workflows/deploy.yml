@@ -5,7 +5,8 @@ on:
     branches:
       - main
   schedule:
-    - cron: "*/1 * * * *"  # Runs every 14 minutes
+    - cron: "*/1 * * * *"  # Runs every 1 minute
+  workflow_dispatch:  # ✅ Enables manual trigger via API
 
 jobs:
   deploy:
@@ -17,16 +18,25 @@ jobs:
 
       - name: Deploy to Render
         run: |
+          echo "🚀 Deploying to Render..."
           curl -X POST https://api.render.com/deploy/srv-cuqbkb0gph6c73d0ke50?key=rnd_AzBjsRHVKwSjyxvUVvXmprvK2UKD
 
   keep_alive:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Keep Render API Awake
+      - name: Start Keep-Alive Process
+        run: echo "🟢 Keep-Alive Task Started..."
+
+      - name: Keep Render API Awake (With Debugging)
         run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://ghl-css-styling.onrender.com/keep-alive)
-          echo "Keep-Alive Response Code: $RESPONSE"
+          echo "🔄 Attempting to ping Render..."
+          RESPONSE=$(curl -v -s -o output.log -w "%{http_code}" https://ghl-css-styling.onrender.com/keep-alive)
+          
+          echo "📜 HTTP Response Code: $RESPONSE"
+          echo "📝 Response Body from Render:"
+          cat output.log
+
           if [ "$RESPONSE" -ne 200 ]; then
             echo "❌ Keep-Alive request failed!"
             exit 1
@@ -37,6 +47,9 @@ jobs:
   trigger_self:
     runs-on: ubuntu-latest
     steps:
+      - name: Start Self-Trigger
+        run: echo "🔄 Triggering GitHub Actions via API..."
+
       - name: Trigger GitHub Actions Manually via API
         run: |
           curl -X POST -H "Accept: application/vnd.github.v3+json" \
