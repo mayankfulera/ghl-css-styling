@@ -32,6 +32,7 @@ function xorEncryptDecrypt(data, key) {
 const encryptionKey = "secureKey123";
 
 app.get("/keep-alive", (req, res) => {
+  console.log("👋 I'm awake!")
   res.status(200).send("👋 I'm awake!");
 });
 
@@ -55,6 +56,7 @@ app.get("/load-css.js", (req, res) => {
     const encryptedCSS = Buffer.from(xorEncryptDecrypt(cssContent, encryptionKey)).toString("base64");
 
     res.setHeader("Content-Type", "application/javascript");
+    console.log("✅ CSS Created!!!")
     res.send(`
       (function() {
         var encryptedCSS = "${encryptedCSS}";
