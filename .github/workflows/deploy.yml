@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: "*/1 * * * *"  # Runs every 14 minutes to keep Render API awake
+    - cron: "*/1 * * * *"  # Runs every 14 minutes
 
 jobs:
   deploy:
@@ -23,21 +23,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Keep Render API Awake (Try 3 Times)
+      - name: Keep Render API Awake
         run: |
-          MAX_RETRIES=3
-          for i in $(seq 1 $MAX_RETRIES); do
-            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://ghl-css-styling.onrender.com/keep-alive)
-            echo "Attempt $i - Keep-Alive Response Code: $RESPONSE"
-            
-            if [ "$RESPONSE" -eq 200 ]; then
-              echo "✅ Keep-Alive request succeeded!"
-              exit 0
-            else
-              echo "⚠️ Keep-Alive request failed, retrying in 5 seconds..."
-              sleep 5
-            fi
-          done
-          
-          echo "❌ All attempts failed! Render might still be sleeping."
-          exit 1
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://ghl-css-styling.onrender.com/keep-alive)
+          echo "Keep-Alive Response Code: $RESPONSE"
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "❌ Keep-Alive request failed!"
+            exit 1
+          else
+            echo "✅ Keep-Alive request succeeded!"
+          fi
+
+  trigger_self:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger GitHub Actions Manually via API
+        run: |
+          curl -X POST -H "Accept: application/vnd.github.v3+json" \
+               -H "Authorization: token ${{ secrets.GH_PAT }}" \
+               https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/workflows/deploy.yml/dispatches \
+               -d '{"ref":"main"}'
