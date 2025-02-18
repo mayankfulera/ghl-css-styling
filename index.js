@@ -1,21 +1,27 @@
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
-const PORT = 9000;
-
-// Allow CORS
+const PORT = 9001;
 app.use(cors());
-
-// Your original CSS
-const cssContent = `
-    body { background-color: #222; color: white; font-family: Arial, sans-serif; }
-    h1 { color: #ffcc00; font-size: 24px; text-align: center; }
-    p { font-size: 16px; line-height: 1.6; }
-    .custom-box { padding: 20px; background: #333; border-radius: 8px; }
-`;
-
-// Simple XOR Encryption function (lightweight protection)
+let jsonData = {};
+function loadJSON() {
+  try {
+    const data = fs.readFileSync(path.join(__dirname, "key-to-stylefile-map.json"), "utf8");
+    jsonData = JSON.parse(data);
+    console.log("✅ JSON Data Loaded Successfully");
+  } catch (error) {
+    console.error("❌ Error loading JSON:", error);
+    jsonData = {};
+  }
+}
+loadJSON();
+fs.watchFile(path.join(__dirname, "data.json"), () => {
+  console.log("🔄 Reloading JSON Data...");
+  loadJSON();
+});
 function xorEncryptDecrypt(data, key) {
   return data
     .split("")
@@ -23,37 +29,47 @@ function xorEncryptDecrypt(data, key) {
     .join("");
 }
 
-// Encryption key (DO NOT SHARE)
 const encryptionKey = "secureKey123";
-
-// Encrypt the CSS
-const encryptedCSS = Buffer.from(xorEncryptDecrypt(cssContent, encryptionKey)).toString("base64");
-
-// Serve Encrypted CSS
 app.get("/load-css.js", (req, res) => {
-  res.setHeader("Content-Type", "application/javascript");
+  const key = req.query.key;
 
-  res.send(`
-    (function() {
-      var encryptedCSS = "${encryptedCSS}";
-      var decryptionKey = "secureKey123";
+  if (!key || !jsonData.data || !jsonData.data[key]) {
+    return res.status(403).send("Invalid key");
+  }
 
-      // Decrypt CSS
-      function xorDecrypt(data, key) {
-        var decodedData = atob(data);
-        return decodedData.split("")
-          .map((char, index) => String.fromCharCode(char.charCodeAt(0) ^ key[index % key.length].charCodeAt(0)))
-          .join("");
-      }
+  const filename = jsonData.data[key].filename;
+  const cssFilePath = path.join(__dirname, "styles", `${filename}.css`);
+  if (!fs.existsSync(cssFilePath)) {
+    return res.status(404).send("CSS File Not Found");
+  }
+  fs.readFile(cssFilePath, "utf8", (err, cssContent) => {
+    if (err) {
+      return res.status(500).send("Error reading CSS file");
+    }
 
-      // Apply Decrypted CSS
-      var style = document.createElement('style');
-      style.innerHTML = xorDecrypt(encryptedCSS, decryptionKey);
-      document.head.appendChild(style);
-    })();
-  `);
+    const encryptedCSS = Buffer.from(xorEncryptDecrypt(cssContent, encryptionKey)).toString("base64");
+
+    res.setHeader("Content-Type", "application/javascript");
+    res.send(`
+      (function() {
+        var encryptedCSS = "${encryptedCSS}";
+        var decryptionKey = "secureKey123";
+
+        function xorDecrypt(data, key) {
+          var decodedData = atob(data);
+          return decodedData.split("")
+            .map((char, index) => String.fromCharCode(char.charCodeAt(0) ^ key[index % key.length].charCodeAt(0)))
+            .join("");
+        }
+
+        var style = document.createElement('style');
+        style.innerHTML = xorDecrypt(encryptedCSS, decryptionKey);
+        document.head.appendChild(style);
+      })();
+    `);
+  });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running at ${PORT}`);
 });
