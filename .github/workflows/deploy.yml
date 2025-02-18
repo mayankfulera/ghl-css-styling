@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: "*/14 * * * *"  # Runs every 14 minutes to prevent Render from sleeping
+    - cron: "*/1 * * * *"  # Runs every 14 minutes to keep Render API awake
 
 jobs:
   deploy:
@@ -23,6 +23,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Keep Render API Awake
+      - name: Keep Render API Awake (Try 3 Times)
         run: |
-          curl -s -o /dev/null https://ghl-css-styling.onrender.com/keep-alive
+          MAX_RETRIES=3
+          for i in $(seq 1 $MAX_RETRIES); do
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://ghl-css-styling.onrender.com/keep-alive)
+            echo "Attempt $i - Keep-Alive Response Code: $RESPONSE"
+            
+            if [ "$RESPONSE" -eq 200 ]; then
+              echo "✅ Keep-Alive request succeeded!"
+              exit 0
+            else
+              echo "⚠️ Keep-Alive request failed, retrying in 5 seconds..."
+              sleep 5
+            fi
+          done
+          
+          echo "❌ All attempts failed! Render might still be sleeping."
+          exit 1
