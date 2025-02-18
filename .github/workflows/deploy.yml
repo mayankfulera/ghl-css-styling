@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: "*/14 * * * *"  # Runs every 14 minutes
+    - cron: "*/1 * * * *"  # Runs every 14 minutes
   workflow_dispatch:  # ✅ Allows manual trigger via API
 
 jobs:
