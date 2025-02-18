@@ -38,7 +38,7 @@ jobs:
           DIFF=$((NOW - LAST_RUN))
           echo "⏳ Time since last run: $DIFF seconds"
 
-          if [ "$DIFF" -lt 840 ]; then
+          if [ "$DIFF" -lt 60 ]; then
             echo "🛑 Stopping: Last Keep-Alive was less than 14 minutes ago!"
             exit 0
           fi
