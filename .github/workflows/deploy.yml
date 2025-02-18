@@ -48,14 +48,18 @@ jobs:
 
           if [ "$DIFF" -lt 840 ]; then
             echo "🛑 Stopping: Last Keep-Alive was less than 14 minutes ago!"
-            exit 0
+            echo "::set-output name=skip::true"
+            exit 0  # This ensures the workflow does not fail but stops execution
+          else
+            echo "::set-output name=skip::false"
           fi
 
-      - name: Skip Execution if Already Run Recently
-        if: failure()
-        run: echo "🔕 Skipping keep-alive as it was run recently."
+      - name: Skip Execution Log
+        if: steps.check_time.outputs.skip == 'true'
+        run: echo "🔕 Skipping keep-alive request because it was recently triggered."
 
       - name: Keep Render API Awake
+        if: steps.check_time.outputs.skip == 'false'
         run: |
           echo "🔄 Sending Keep-Alive Request..."
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://ghl-css-styling.onrender.com/keep-alive)
@@ -67,6 +71,7 @@ jobs:
           else
             echo "✅ Keep-Alive request succeeded!"
           fi
+
 
  
  
