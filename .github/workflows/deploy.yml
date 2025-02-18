@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: "*/14 * * * *"  # Runs every 14 minutes to prevent Render from sleeping
 
 jobs:
   deploy:
@@ -16,3 +18,11 @@ jobs:
       - name: Deploy to Render
         run: |
           curl -X POST https://api.render.com/deploy/srv-cuqbkb0gph6c73d0ke50?key=rnd_AzBjsRHVKwSjyxvUVvXmprvK2UKD
+
+  keep_alive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Keep Render API Awake
+        run: |
+          curl -s -o /dev/null https://your-api.onrender.com/keep-alive
