@@ -24,27 +24,27 @@ jobs:
           echo "🚀 Triggering Deployment to Render..."
           curl -X POST https://api.render.com/deploy/srv-cuqbkb0gph6c73d0ke50?key=rnd_AzBjsRHVKwSjyxvUVvXmprvK2UKD
 
-keep_alive:
-  runs-on: ubuntu-latest
+  keep_alive:
+    runs-on: ubuntu-latest
 
-  steps:
-    - name: Log Current Time for Keep-Alive
-      run: echo "🕒 Keep-Alive Triggered at $(date)"
+    steps:
+      - name: Log Current Time for Keep-Alive
+        run: echo "🕒 Keep-Alive Triggered at $(date)"
 
-    - name: Prevent Infinite Loop (Wait 14 min Before Retrying)
-      run: |
-        LAST_RUN=$(date -d "$(curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
-        https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/runs?per_page=1 | \
-        jq -r '.workflow_runs[0].created_at')" +%s)
+      - name: Prevent Infinite Loop (Wait 14 min Before Retrying)
+        run: |
+          LAST_RUN=$(date -d "$(curl -s -H "Authorization: token ${{ secrets.GH_PAT }}" \
+          https://api.github.com/repos/mayankfulera/ghl-css-styling/actions/runs?per_page=1 | \
+          jq -r '.workflow_runs[0].created_at')" +%s)
 
-        NOW=$(date +%s)
-        DIFF=$((NOW - LAST_RUN))
-        echo "⏳ Time since last run: $DIFF seconds"
+          NOW=$(date +%s)
+          DIFF=$((NOW - LAST_RUN))
+          echo "⏳ Time since last run: $DIFF seconds"
 
-        if [ "$DIFF" -lt 840 ]; then
-          echo "🛑 Stopping: Last Keep-Alive was less than 14 minutes ago!"
-          exit 0
-        fi
+          if [ "$DIFF" -lt 840 ]; then
+            echo "🛑 Stopping: Last Keep-Alive was less than 14 minutes ago!"
+            exit 0
+          fi
 
     - name: Keep Render API Awake
       run: |
